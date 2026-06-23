@@ -145,18 +145,13 @@ class AI_VideoProcessor(VideoTransformerBase):
 
         # Processed frame ko wapas browser ke format mein convert kar ke bhejna
         return av.VideoFrame.from_ndarray(ai_frame, format="bgr24")
-
 RTC_CONFIGURATION = RTCConfiguration(
     {
         "iceServers": [
             {"urls": ["stun:stun.l.google.com:19302"]},
             {"urls": ["stun:stun1.l.google.com:19302"]},
-            # Twilio ka public TURN server
-            {
-                "urls": ["turn:global.relay.twilio.com:3478"],
-                "username": "your_twilio_username", # Yahan aapko apna account use karna hoga
-                "credential": "your_twilio_password"
-            }
+            {"urls": ["stun:stun2.l.google.com:19302"]},
+            {"urls": ["stun:stun3.l.google.com:19302"]}
         ]
     }
 )
