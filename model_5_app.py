@@ -1,205 +1,102 @@
-# # module_5_app.py
-# import cv2
-# import streamlit as st
-# import time
-# import config
-
-# # Importing all previous modules
-# from module_1_camera import get_camera_stream
-# from module_2_ai import process_frame_with_ai
-# from module_3_logic import check_for_anomalies
-# from module_4_alert import trigger_emergency_protocols
-
-# # Streamlit UI Setup
-# st.set_page_config(page_title="SMART-CCTV", layout="wide")
-# st.title("🛡️ SMART-CCTV: Real-Time Anomaly Detection")
-
-# # Live Alert Box
-# live_alert_box = st.empty() 
-
-# # UI Columns layout
-# col1, col2 = st.columns([3, 1])
-# video_placeholder = col1.empty()
-# alert_history = col2.empty()
-
-# # Start Button
-# if st.button("Start Live Monitoring"):
-#     cap = get_camera_stream(config.PHONE_URL)
-    
-#     if cap:
-#         frame_count = 0
-#         history_list = []
-#         DISPLAY_DIM = (640, 360) 
-        
-#         # ---> NAYI LOGIC: Alert ko 5 second tak screen par rokne ke liye variables
-#         alert_end_time = 0
-#         current_alert_msg = ""
-#         current_alert_type = ""
-        
-#         while cap.isOpened():
-#             ret, frame = cap.read()
-#             if not ret:
-#                 st.error("Camera Disconnected!")
-#                 break
-                
-#             frame = cv2.flip(frame, 1) 
-            
-#             frame_count += 1
-#             if frame_count % config.SKIP_FRAMES != 0:
-#                 continue
-                
-#             frame = cv2.resize(frame, DISPLAY_DIM)
-            
-#             # Module 2 & 3: AI and Logic
-#             ai_frame, detected_classes = process_frame_with_ai(frame)
-#             is_critical, anomalies = check_for_anomalies(detected_classes)
-            
-#             # ---> Agar AI koi khatra detect karta hai
-#             if is_critical:
-#                 trigger_emergency_protocols(anomalies)
-                
-#                 detected_item = anomalies[0].lower() 
-#                 current_time = time.strftime('%H:%M:%S')
-                
-#                 # Alert ko current time se 5 seconds aage tak screen par freeze kar do
-#                 alert_end_time = time.time() + 5
-#                 current_alert_type = detected_item
-                
-#                 # Message Set Karo
-#                 if detected_item == "fire":
-#                     current_alert_msg = "🔥 URGENT: FIRE DETECTED! Evacuation Protocol Initiated."
-#                 elif detected_item == "fight": 
-#                     current_alert_msg = "🥊 URGENT: FIGHT / SUSPICIOUS ACTIVITY! Security Dispatched."
-#                 elif detected_item == "knife":
-#                     current_alert_msg = "🔪 URGENT: WEAPON DETECTED!"
-#                 else:
-#                     # Yeh dynamic hai, jo detect hoga uska naam aayega (e.g. Person, Cell Phone)
-#                     current_alert_msg = f"⚠️ ALERT: {detected_item.upper()} DETECTED in the frame!"
-                
-#                 # History List ko update karo
-#                 history_list.insert(0, f"**[{current_time}]** {detected_item.upper()} Detected")
-                
-#             # ---> 5 Second Display Logic (Video slow kiye bina message show karna)
-#             if time.time() < alert_end_time:
-#                 if current_alert_type in ["fire", "knife"]:
-#                     live_alert_box.error(current_alert_msg) # Lal (Red) Box
-#                 else:
-#                     live_alert_box.warning(current_alert_msg) # Peela (Yellow) Box
-#             else:
-#                 live_alert_box.empty() # 5 second baad automatically ghayab
-                
-#             # ---> History Sidebar (Ab brackets ki bajaye saaf list nazar aayegi)
-#             if history_list:
-#                 history_md = "\n".join([f"- {item}" for item in history_list[:10]])
-#                 alert_history.markdown(f"### 🚨 Alert History\n{history_md}")
-            
-#             # Output to UI Dashboard
-#             ai_frame = cv2.cvtColor(ai_frame, cv2.COLOR_BGR2RGB)
-#             video_placeholder.image(ai_frame, channels="RGB", use_container_width=True)
-            
-#         cap.release()
-
-# # module_5_app.py
-# import cv2
-# import streamlit as st
-# from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode, RTCConfiguration
-# import av
-
-# # Importing previous modules
-# from module_2_ai import process_frame_with_ai
-
-# # Streamlit UI Setup
-# st.set_page_config(page_title="SMART-CCTV (Cloud Edition)", layout="wide")
-# st.title("🛡️ SMART-CCTV: WebRTC Real-Time Anomaly Detection")
-# st.markdown("Yeh system directly aapke browser ka camera use kar raha hai.")
-
-# # WebRTC STUN Server Configuration (Cloud connection ke liye zaroori hai)
-# RTC_CONFIGURATION = RTCConfiguration(
-#     {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-# )
-
-# # WebRTC Video Processor Class
-# class AI_VideoProcessor(VideoTransformerBase):
-#     def __init__(self):
-#         self.frame_count = 0
-#         self.skip_frames = 3
-
-#     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
-#         # Browser se aane wale frame ko OpenCV format (NumPy array) mein convert karna
-#         img = frame.to_ndarray(format="bgr24")
-        
-#         # Horizontal Flip (Mirror effect theek karne ke liye)
-#         img = cv2.flip(img, 1)
-
-#         # Frame Skipping logic for optimization
-#         self.frame_count += 1
-#         if self.frame_count % self.skip_frames != 0:
-#             return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-#         # Resize for faster processing
-#         img = cv2.resize(img, (640, 360))
-
-#         # Module 2: AI Inference
-#         # Yahan hum frame AI ko pass kar rahe hain aur bounding boxes wala frame wapas le rahe hain
-#         ai_frame, detected_classes = process_frame_with_ai(img)
-
-#         # Processed frame ko wapas browser ke format mein convert kar ke bhejna
-#         return av.VideoFrame.from_ndarray(ai_frame, format="bgr24")
-# RTC_CONFIGURATION = RTCConfiguration(
-#     {
-#         "iceServers": [
-#             {"urls": ["stun:stun.l.google.com:19302"]},
-#             {"urls": ["stun:stun1.l.google.com:19302"]},
-#             {"urls": ["stun:stun2.l.google.com:19302"]},
-#             {"urls": ["stun:stun3.l.google.com:19302"]}
-#         ]
-#     }
-# )
-
-# # Start WebRTC Streamer
-# webrtc_streamer(
-#     key="smart-cctv",
-#     mode=WebRtcMode.SENDRECV,
-#     rtc_configuration=RTC_CONFIGURATION,
-#     video_processor_factory=AI_VideoProcessor,
-#     media_stream_constraints={"video": True, "audio": False},
-#     async_processing=True,
-# )
-
-
-
-import streamlit as st
+# module_5_app.py
 import cv2
-import tempfile
-import os
+import streamlit as st
+import time
+import config
+
+# Importing all previous modules
+from module_1_camera import get_camera_stream
 from module_2_ai import process_frame_with_ai
+from module_3_logic import check_for_anomalies
+from module_4_alert import trigger_emergency_protocols
 
-st.set_page_config(page_title="SMART-CCTV Analyzer", layout="wide")
-st.title("🛡️ SMART-CCTV: Anomaly Detection Analyzer")
+# Streamlit UI Setup
+st.set_page_config(page_title="SMART-CCTV", layout="wide")
+st.title("🛡️ SMART-CCTV: Real-Time Anomaly Detection")
 
-# File Uploader
-uploaded_file = st.file_uploader("Upload CCTV footage (MP4)...", type=["mp4"])
+# Live Alert Box
+live_alert_box = st.empty() 
 
-if uploaded_file is not None:
-    # Save uploaded file to a temporary location
-    tfile = tempfile.NamedTemporaryFile(delete=False)
-    tfile.write(uploaded_file.read())
+# UI Columns layout
+col1, col2 = st.columns([3, 1])
+video_placeholder = col1.empty()
+alert_history = col2.empty()
+
+# Start Button
+if st.button("Start Live Monitoring"):
+    cap = get_camera_stream(config.PHONE_URL)
     
-    cap = cv2.VideoCapture(tfile.name)
-    stframe = st.empty()
-    
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
+    if cap:
+        frame_count = 0
+        history_list = []
+        DISPLAY_DIM = (640, 360) 
+        
+        # ---> NAYI LOGIC: Alert ko 5 second tak screen par rokne ke liye variables
+        alert_end_time = 0
+        current_alert_msg = ""
+        current_alert_type = ""
+        
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                st.error("Camera Disconnected!")
+                break
+                
+            frame = cv2.flip(frame, 1) 
             
-        # Resize & AI Inference
-        frame = cv2.resize(frame, (640, 360))
-        ai_frame, _ = process_frame_with_ai(frame)
-        
-        # Display
-        ai_frame = cv2.cvtColor(ai_frame, cv2.COLOR_BGR2RGB)
-        stframe.image(ai_frame, channels="RGB", use_container_width=True)
-        
-    cap.release()
-    os.unlink(tfile.name) # Cleanup temp file
+            frame_count += 1
+            if frame_count % config.SKIP_FRAMES != 0:
+                continue
+                
+            frame = cv2.resize(frame, DISPLAY_DIM)
+            
+            # Module 2 & 3: AI and Logic
+            ai_frame, detected_classes = process_frame_with_ai(frame)
+            is_critical, anomalies = check_for_anomalies(detected_classes)
+            
+            # ---> Agar AI koi khatra detect karta hai
+            if is_critical:
+                trigger_emergency_protocols(anomalies)
+                
+                detected_item = anomalies[0].lower() 
+                current_time = time.strftime('%H:%M:%S')
+                
+                # Alert ko current time se 5 seconds aage tak screen par freeze kar do
+                alert_end_time = time.time() + 5
+                current_alert_type = detected_item
+                
+                # Message Set Karo
+                if detected_item == "fire":
+                    current_alert_msg = "🔥 URGENT: FIRE DETECTED! Evacuation Protocol Initiated."
+                elif detected_item == "fight": 
+                    current_alert_msg = "🥊 URGENT: FIGHT / SUSPICIOUS ACTIVITY! Security Dispatched."
+                elif detected_item == "knife":
+                    current_alert_msg = "🔪 URGENT: WEAPON DETECTED!"
+                else:
+                    # Yeh dynamic hai, jo detect hoga uska naam aayega (e.g. Person, Cell Phone)
+                    current_alert_msg = f"⚠️ ALERT: {detected_item.upper()} DETECTED in the frame!"
+                
+                # History List ko update karo
+                history_list.insert(0, f"**[{current_time}]** {detected_item.upper()} Detected")
+                
+            # ---> 5 Second Display Logic (Video slow kiye bina message show karna)
+            if time.time() < alert_end_time:
+                if current_alert_type in ["fire", "knife"]:
+                    live_alert_box.error(current_alert_msg) # Lal (Red) Box
+                else:
+                    live_alert_box.warning(current_alert_msg) # Peela (Yellow) Box
+            else:
+                live_alert_box.empty() # 5 second baad automatically ghayab
+                
+            # ---> History Sidebar (Ab brackets ki bajaye saaf list nazar aayegi)
+            if history_list:
+                history_md = "\n".join([f"- {item}" for item in history_list[:10]])
+                alert_history.markdown(f"### 🚨 Alert History\n{history_md}")
+            
+            # Output to UI Dashboard
+            ai_frame = cv2.cvtColor(ai_frame, cv2.COLOR_BGR2RGB)
+            video_placeholder.image(ai_frame, channels="RGB", use_container_width=True)
+            
+        cap.release()
+
+
