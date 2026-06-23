@@ -99,69 +99,107 @@
             
 #         cap.release()
 
-# module_5_app.py
-import cv2
-import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode, RTCConfiguration
-import av
+# # module_5_app.py
+# import cv2
+# import streamlit as st
+# from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode, RTCConfiguration
+# import av
 
-# Importing previous modules
+# # Importing previous modules
+# from module_2_ai import process_frame_with_ai
+
+# # Streamlit UI Setup
+# st.set_page_config(page_title="SMART-CCTV (Cloud Edition)", layout="wide")
+# st.title("🛡️ SMART-CCTV: WebRTC Real-Time Anomaly Detection")
+# st.markdown("Yeh system directly aapke browser ka camera use kar raha hai.")
+
+# # WebRTC STUN Server Configuration (Cloud connection ke liye zaroori hai)
+# RTC_CONFIGURATION = RTCConfiguration(
+#     {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+# )
+
+# # WebRTC Video Processor Class
+# class AI_VideoProcessor(VideoTransformerBase):
+#     def __init__(self):
+#         self.frame_count = 0
+#         self.skip_frames = 3
+
+#     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
+#         # Browser se aane wale frame ko OpenCV format (NumPy array) mein convert karna
+#         img = frame.to_ndarray(format="bgr24")
+        
+#         # Horizontal Flip (Mirror effect theek karne ke liye)
+#         img = cv2.flip(img, 1)
+
+#         # Frame Skipping logic for optimization
+#         self.frame_count += 1
+#         if self.frame_count % self.skip_frames != 0:
+#             return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+#         # Resize for faster processing
+#         img = cv2.resize(img, (640, 360))
+
+#         # Module 2: AI Inference
+#         # Yahan hum frame AI ko pass kar rahe hain aur bounding boxes wala frame wapas le rahe hain
+#         ai_frame, detected_classes = process_frame_with_ai(img)
+
+#         # Processed frame ko wapas browser ke format mein convert kar ke bhejna
+#         return av.VideoFrame.from_ndarray(ai_frame, format="bgr24")
+# RTC_CONFIGURATION = RTCConfiguration(
+#     {
+#         "iceServers": [
+#             {"urls": ["stun:stun.l.google.com:19302"]},
+#             {"urls": ["stun:stun1.l.google.com:19302"]},
+#             {"urls": ["stun:stun2.l.google.com:19302"]},
+#             {"urls": ["stun:stun3.l.google.com:19302"]}
+#         ]
+#     }
+# )
+
+# # Start WebRTC Streamer
+# webrtc_streamer(
+#     key="smart-cctv",
+#     mode=WebRtcMode.SENDRECV,
+#     rtc_configuration=RTC_CONFIGURATION,
+#     video_processor_factory=AI_VideoProcessor,
+#     media_stream_constraints={"video": True, "audio": False},
+#     async_processing=True,
+# )
+
+
+
+import streamlit as st
+import cv2
+import tempfile
+import os
 from module_2_ai import process_frame_with_ai
 
-# Streamlit UI Setup
-st.set_page_config(page_title="SMART-CCTV (Cloud Edition)", layout="wide")
-st.title("🛡️ SMART-CCTV: WebRTC Real-Time Anomaly Detection")
-st.markdown("Yeh system directly aapke browser ka camera use kar raha hai.")
+st.set_page_config(page_title="SMART-CCTV Analyzer", layout="wide")
+st.title("🛡️ SMART-CCTV: Anomaly Detection Analyzer")
 
-# WebRTC STUN Server Configuration (Cloud connection ke liye zaroori hai)
-RTC_CONFIGURATION = RTCConfiguration(
-    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-)
+# File Uploader
+uploaded_file = st.file_uploader("Upload CCTV footage (MP4)...", type=["mp4"])
 
-# WebRTC Video Processor Class
-class AI_VideoProcessor(VideoTransformerBase):
-    def __init__(self):
-        self.frame_count = 0
-        self.skip_frames = 3
-
-    def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
-        # Browser se aane wale frame ko OpenCV format (NumPy array) mein convert karna
-        img = frame.to_ndarray(format="bgr24")
+if uploaded_file is not None:
+    # Save uploaded file to a temporary location
+    tfile = tempfile.NamedTemporaryFile(delete=False)
+    tfile.write(uploaded_file.read())
+    
+    cap = cv2.VideoCapture(tfile.name)
+    stframe = st.empty()
+    
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+            
+        # Resize & AI Inference
+        frame = cv2.resize(frame, (640, 360))
+        ai_frame, _ = process_frame_with_ai(frame)
         
-        # Horizontal Flip (Mirror effect theek karne ke liye)
-        img = cv2.flip(img, 1)
-
-        # Frame Skipping logic for optimization
-        self.frame_count += 1
-        if self.frame_count % self.skip_frames != 0:
-            return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-        # Resize for faster processing
-        img = cv2.resize(img, (640, 360))
-
-        # Module 2: AI Inference
-        # Yahan hum frame AI ko pass kar rahe hain aur bounding boxes wala frame wapas le rahe hain
-        ai_frame, detected_classes = process_frame_with_ai(img)
-
-        # Processed frame ko wapas browser ke format mein convert kar ke bhejna
-        return av.VideoFrame.from_ndarray(ai_frame, format="bgr24")
-RTC_CONFIGURATION = RTCConfiguration(
-    {
-        "iceServers": [
-            {"urls": ["stun:stun.l.google.com:19302"]},
-            {"urls": ["stun:stun1.l.google.com:19302"]},
-            {"urls": ["stun:stun2.l.google.com:19302"]},
-            {"urls": ["stun:stun3.l.google.com:19302"]}
-        ]
-    }
-)
-
-# Start WebRTC Streamer
-webrtc_streamer(
-    key="smart-cctv",
-    mode=WebRtcMode.SENDRECV,
-    rtc_configuration=RTC_CONFIGURATION,
-    video_processor_factory=AI_VideoProcessor,
-    media_stream_constraints={"video": True, "audio": False},
-    async_processing=True,
-)
+        # Display
+        ai_frame = cv2.cvtColor(ai_frame, cv2.COLOR_BGR2RGB)
+        stframe.image(ai_frame, channels="RGB", use_container_width=True)
+        
+    cap.release()
+    os.unlink(tfile.name) # Cleanup temp file
